@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Quirófano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animación sencilla para transiciones de pantalla */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-teal-100 min-h-screen flex items-center justify-center p-4 font-sans text-gray-800">
+
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full text-center relative overflow-hidden fade-in" id="game-container">
+        
+        <div id="start-screen" class="block">
+            <div class="text-8xl mb-4">👩‍⚕️</div>
+            <h1 class="text-3xl font-bold text-teal-700 mb-2">Misión Quirófano</h1>
+            <p class="text-lg text-gray-600 mb-6">¡Hola! Soy la Enfermera Play. ¿Me ayudas a preparar el pabellón de manera segura?</p>
+            
+            <input type="text" id="player-name" placeholder="Ingresa tu nombre..." 
+                class="w-full max-w-sm px-4 py-3 rounded-lg border-2 border-teal-200 focus:outline-none focus:border-teal-500 mb-6 text-center text-lg">
+            <br>
+            <button onclick="startGame()" 
+                class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 shadow-md hover:shadow-lg">
+                Entrar a Pabellón
+            </button>
+        </div>
+
+        <div id="game-screen" class="hidden fade-in">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <div class="text-left">
+                    <p class="text-sm text-gray-500 font-bold uppercase tracking-wide">Puntuación</p>
+                    <p class="text-2xl font-black text-teal-600" id="score-display">100</p>
+                </div>
+                <div class="text-6xl transition-transform duration-300" id="status-emoji">😁</div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500 font-bold uppercase tracking-wide">Pregunta</p>
+                    <p class="text-xl font-bold text-gray-700"><span id="current-question-num">1</span>/10</p>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-semibold text-gray-800 mb-8 min-h-[5rem] flex items-center justify-center" id="question-text">
+                ¿Pregunta de prueba?
+            </h2>
+
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                </div>
+        </div>
+
+        <div id="end-screen" class="hidden fade-in">
+            <div class="text-8xl mb-4">🎉</div>
+            <h1 class="text-3xl font-bold text-teal-700 mb-2">¡Cirugía Segura Exitosa!</h1>
+            <p class="text-lg text-gray-600 mb-2" id="final-message"></p>
+            <p class="text-2xl font-bold text-gray-800 mb-6">Tu puntuación final: <span id="final-score" class="text-teal-600"></span></p>
+
+            <div class="bg-blue-50 rounded-xl p-4 mb-6 max-w-md mx-auto border border-blue-100 shadow-inner">
+                <h3 class="font-bold text-blue-800 mb-3 uppercase tracking-wider text-sm">🏆 Ranking de Pabellón</h3>
+                <ul id="ranking-list" class="text-left space-y-2">
+                    </ul>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button onclick="resetGame()" 
+                    class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-full transition duration-300 shadow-md">
+                    Volver a operar
+                </button>
+                <button onclick="exitGame()" 
+                    class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-full transition duration-300 shadow-md">
+                    Salir
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. DATOS DEL JUEGO ---
+        const questions = [
+            {
+                q: "Antes de la incisión quirúrgica, el equipo médico debe realizar una breve reunión de verificación. ¿Cómo se llama este protocolo?",
+                options: ["Pausa de Seguridad (Time-Out)", "Ronda Médica", "Checklist de Inducción", "Pausa de Anestesia"],
+                correct: 0
+            },
+            {
+                q: "¿Cuál es la diferencia principal entre el lavado de manos clínico y el quirúrgico?",
+                options: ["El jabón utilizado no importa", "El quirúrgico incluye lavado hasta los codos y dura más tiempo", "El clínico se hace con guantes puestos", "Solo el cirujano debe lavarse las manos"],
+                correct: 1
+            },
+            {
+                q: "Si un instrumento estéril cae por debajo del nivel de la cintura, ¿qué se debe hacer?",
+                options: ["Limpiarlo con alcohol y usarlo", "Considerarlo contaminado y descartarlo", "Usarlo solo si no tocó el piso", "Entregárselo a la enfermera circulante para guardarlo"],
+                correct: 1
+            },
+            {
+                q: "¿Cómo confirmamos correctamente la identidad de un paciente antes de ingresar a pabellón?",
+                options: ["Preguntándole a su familiar", "Verificando su nombre en la pizarra", "Revisando la pulsera de identificación y preguntándole su nombre completo", "Asumiendo que es el paciente de la cama 4"],
+                correct: 2
+            },
+            {
+                q: "¿Dónde se deben desechar siempre las hojas de bisturí y agujas?",
+                options: ["En la bolsa de basura negra", "En la bolsa de desechos biológicos (roja)", "En el contenedor rígido de cortopunzantes", "Dejarlas en la mesa quirúrgica para que limpieza las bote"],
+                correct: 2
+            },
+            {
+                q: "El uso correcto de la mascarilla dentro de las áreas restringidas del pabellón implica:",
+                options: ["Cubrir solo la boca", "Cubrir boca y nariz y ajustarla al puente nasal", "Llevarla colgada en el cuello hasta que empiece la cirugía", "Usarla solo si estás resfriado"],
+                correct: 1
+            },
+            {
+                q: "¿Quién es el encargado principal de realizar el 'Marcaje Quirúrgico' en el sitio a operar?",
+                options: ["La enfermera arsenalera", "El anestesiólogo", "El cirujano responsable de la operación", "El técnico paramédico"],
+                correct: 2
+            },
+            {
+                q: "En cuanto a la circulación y tráfico de personal dentro del quirófano durante una cirugía:",
+                options: ["Las puertas deben mantenerse abiertas para ventilar", "Se debe minimizar el tránsito y mantener las puertas cerradas", "Cualquier persona puede entrar si usa mascarilla", "El personal debe entrar y salir rápido sin importar cuántas veces"],
+                correct: 1
+            },
+            {
+                q: "El Consentimiento Informado es un documento vital. ¿En qué momento debe estar firmado por el paciente?",
+                options: ["Durante la cirugía, cuando esté anestesiado", "Después de la cirugía en recuperación", "Antes de administrar cualquier sedación o anestesia", "No es necesario si la cirugía es de urgencia leve"],
+                correct: 2
+            },
+            {
+                q: "¿Qué vestimenta es obligatoria para transitar por los pasillos internos (zona limpia) del pabellón?",
+                options: ["Ropa de calle", "Traje de mayo (uniforme de pabellón) de uso exclusivo y gorro", "Solo delantal blanco", "Traje de mayo, gorro, y cubrezapatos aunque vengas de la calle"],
+                correct: 1
+            }
+        ];
+
+        // --- 2. VARIABLES DE ESTADO ---
+        let currentScore = 100;
+        let currentQuestionIndex = 0;
+        let playerName = "";
+
+        // Elementos del DOM
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const scoreDisplay = document.getElementById('score-display');
+        const statusEmoji = document.getElementById('status-emoji');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const currentQuestionNum = document.getElementById('current-question-num');
+
+        // --- 3. FUNCIONES DE LÓGICA ---
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            if (!nameInput) {
+                alert("¡Por favor, ingresa tu nombre para comenzar la misión!");
+                return;
+            }
+            playerName = nameInput;
+            currentScore = 100;
+            currentQuestionIndex = 0;
+            
+            updateScoreAndEmoji();
+            
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const currentQ = questions[currentQuestionIndex];
+            questionText.innerText = currentQ.q;
+            currentQuestionNum.innerText = currentQuestionIndex + 1;
+            
+            optionsContainer.innerHTML = ''; // Limpiar opciones anteriores
+            
+            currentQ.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-50 border-2 border-blue-200 text-blue-900 font-medium py-4 px-6 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 shadow-sm";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIndex) {
+            const correctIndex = questions[currentQuestionIndex].correct;
+            
+            if (selectedIndex === correctIndex) {
+                currentScore += 10;
+            } else {
+                currentScore -= 10;
+            }
+            
+            updateScoreAndEmoji();
+            
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function updateScoreAndEmoji() {
+            scoreDisplay.innerText = currentScore;
+            
+            // Lógica para cambiar emoji
+            if (currentScore >= 150) {
+                statusEmoji.innerText = "😎";
+            } else if (currentScore >= 100) {
+                statusEmoji.innerText = "😁";
+            } else if (currentScore >= 60) {
+                statusEmoji.innerText = "😰";
+            } else {
+                statusEmoji.innerText = "🚑";
+            }
+        }
+
+        function endGame() {
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = currentScore;
+            
+            // Mensaje final según puntaje (< 80 regular, >= 80 bien hecho)
+            const finalMessage = document.getElementById('final-message');
+            if (currentScore >= 80) {
+                finalMessage.innerHTML = `¡Bien hecho, <b>${playerName}</b>! Dominas muy bien los protocolos de seguridad.`;
+            } else {
+                finalMessage.innerHTML = `Regular, <b>${playerName}</b>. Te sugerimos repasar los protocolos para asegurar el bienestar del paciente.`;
+            }
+
+            saveAndShowRanking();
+        }
+
+        function saveAndShowRanking() {
+            // Guardar en localStorage
+            let rankings = JSON.parse(localStorage.getItem('quirofanoRanking')) || [];
+            rankings.push({ name: playerName, score: currentScore });
+            
+            // Ordenar de mayor a menor y guardar
+            rankings.sort((a, b) => b.score - a.score);
+            localStorage.setItem('quirofanoRanking', JSON.stringify(rankings));
+
+            // Mostrar el top 5
+            const rankingList = document.getElementById('ranking-list');
+            rankingList.innerHTML = '';
+            const top5 = rankings.slice(0, 5);
+            
+            top5.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-white p-2 rounded border border-blue-50";
+                
+                let medal = "🏅";
+                if(index === 0) medal = "🥇";
+                if(index === 1) medal = "🥈";
+                if(index === 2) medal = "🥉";
+
+                li.innerHTML = `<span class="font-medium text-gray-700">${medal} ${entry.name}</span> 
+                                <span class="font-bold text-teal-600">${entry.score} pts</span>`;
+                rankingList.appendChild(li);
+            });
+        }
+
+        function resetGame() {
+            endScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            document.getElementById('player-name').value = '';
+        }
+
+        function exitGame() {
+            // Reinicia todo visualmente simulando una salida
+            resetGame();
+            document.getElementById('start-screen').innerHTML = `
+                <div class="text-6xl mb-4">👋</div>
+                <h1 class="text-3xl font-bold text-teal-700 mb-4">¡Turno terminado!</h1>
+                <p class="text-gray-600">Gracias por cuidar de nuestros pacientes hoy.</p>
+                <button onclick="location.reload()" class="mt-6 text-teal-600 underline hover:text-teal-800">Volver a iniciar</button>
+            `;
+        }
+    </script>
+</body>
+</html>
